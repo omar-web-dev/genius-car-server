@@ -1,12 +1,11 @@
+const jwt = require("jsonwebtoken")
+// random bytes
+// require('crypto').randomBytes(64).toString('hex')
 const express = require("express");
 const cors = require("cors")
 const app = express()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-// const { JsonWebTokenError } = require("jsonwebtoken");
-const jwt = require("jsonwebtoken")
 
-// random bytes
-// require('crypto').randomBytes(64).toString('hex')
 
 const port = process.env.PORT || 5000
 
@@ -34,19 +33,23 @@ async function run() {
         app.get('/services', async (req, res) => {
             // query
             const query = {}
+            const page = parseInt(req.query.page)
+            const size = parseInt(req.query.size)
+            console.log(page, size)
             // find data form your collection
             const cursor = serviceCollection.find(query)
             // convert to Array onek gula data find korar somoi array te convert korte hobe
-            const services = await cursor.toArray()
+            const services = await cursor.skip(page*size).limit(size).toArray()
+            const count = await serviceCollection.estimatedDocumentCount()
             // request send 
-            res.send(services)
+            res.send({services, count})
 
         })
 
         // create user token
         app.post('/jwt', (req, res) => {
             const user = req.body
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn : '1hr'})
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn : '23hr'})
             res.send({token})
             console.log(user)
             
@@ -82,6 +85,16 @@ async function run() {
                 const order = await cursor.toArray()
                 res.send(order)
             })
+
+        app.patch('/orders/:id', async (req, res) => {
+            const id = req.params.id
+            const status = req.body.status
+            console.log(id, status)
+            const query = {_id : ObjectId(id)} 
+            const updated = {$set : {status}}
+            const result = await orderCollection.updateOne(query, updated)
+            res.send(result) 
+        })
 
         app.post('/orders', async (req, res) => {
             const order = req.body;
